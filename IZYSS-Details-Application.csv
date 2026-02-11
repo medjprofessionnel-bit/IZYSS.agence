@@ -1,0 +1,144 @@
+﻿IZYSS — Détail Complet de l'Application
+Générée le 11/02/2026
+
+SECTION;ÉLÉMENT;DÉTAIL;VALEUR / DESCRIPTION;STATUT
+
+ARCHITECTURE;Type;Application;SPA (Single Page Application);Défini
+ARCHITECTURE;Stack;Frontend;HTML / CSS / JavaScript vanilla;Défini
+ARCHITECTURE;Navigation;Routing;Client-side, affichage/masquage de sections;Défini
+ARCHITECTURE;Layout;Sidebar;Fixe 260px à gauche, navigation principale;Défini
+ARCHITECTURE;Layout;Header;Sticky 72px, titre + actions par page;Défini
+ARCHITECTURE;Layout;Content;Zone scrollable, max-width 1500px;Défini
+ARCHITECTURE;Données;Source;Données mock en dur (à remplacer par API/BDD);À développer
+ARCHITECTURE;Auth;Authentification;"Non implémentée (utilisateur ""Sophie"" par défaut)";À développer
+ARCHITECTURE;Responsive;Mobile;Non implémenté (desktop only);À développer
+
+PAGES DE L'APPLICATION
+Page;ID HTML;Section Sidebar;Namespace CSS/JS;Composants Principaux;Modals;Drawer;Fonctions JS clés
+Dashboard;page-dashboard;Principal;db-;KPIs (4), Table candidats, Liste missions, Feed activité, Chat widget IA;—;—;dbToggleChat
+Candidats;page-candidats;Principal;cd-;KPIs (4), Table/Grille toggle, Toolbar filtres + recherche;Import CV, Push Portail Client;Profil candidat (540px);cdRender, cdRenderTable, cdRenderGrid, cdOpenDrawer, cdSetFilter, cdSetView, cdSimulateImport, cdOpenPortalPush
+Missions;page-missions;Principal;ms-;KPIs (5 cliquables), Table/Kanban toggle, Toolbar filtres + recherche;Nouvelle mission;Détail mission (580px);msRender, msRenderTable, msRenderKanban, msOpenDrawer, msSetFilter, msSetView, msFilterByKpi, msCreateMission
+Contrats;page-contrats;Principal;ct-;KPIs (5 cliquables), Table avec progress bars, Toolbar filtres + recherche;Nouvel avenant, Nouveau contrat;Détail contrat + timeline (580px);ctRender, ctOd, ctFilterByKpi, ctSf, ctOpenAvenType, ctConfirmAven, ctCreateContrat
+Matching;page-matching;Outils IA;(inline);Sélecteur mission, Critères matching, Résultats scorés;—;—;runMatching, selectMission, renderMatches
+Scoring CV;page-scoring;Outils IA;(inline);Zone drop CV, Résultats scoring avec barres critères;—;—;renderScoringCandidates
+Relances;page-relances;Outils IA;(inline);KPIs (4), Liste campagnes, Feed activité;Nouvelle relance;—;launchCamp, openRelanceModal, renderCampaigns, renderFeed
+Portail Client;page-portail;Espace Client;pc-;Toolbar filtres clients, Grille candidats, Sélecteur visibilité;—;Aperçu profil client;pcR, pcOd, pcSf, pcSmf, pcE, pcDlC, pcRqC
+
+DESIGN SYSTEM
+Catégorie;Variable CSS;Valeur;Usage
+Fond;--bg;#F4F6FB;Fond global de la page
+Surface;--surface;#FFFFFF;Cartes, modals, composants
+Surface hover;--surface-hover;#F8F9FD;Hover sur lignes de table
+Bordure;--border;#E8ECF4;Bordures principales
+Bordure légère;--border-light;#F0F2F8;Séparateurs internes
+Texte principal;--text-primary;#1A1D2E;Titres et contenus
+Texte secondaire;--text-secondary;#6B7294;Sous-titres, descriptions
+Texte tertiaire;--text-tertiary;#9CA3C4;Labels, placeholders
+Accent;--accent;#6C5CE7;Couleur principale (violet)
+Accent clair;--accent-light;#A29BFE;Violet clair
+Accent fond;--accent-bg;#F0EEFF;Fond violet léger
+Bleu;--blue;#4A90D9;Statuts en cours, signatures
+Vert;--green;#2ECC71;Succès, actif, disponible
+Orange;--orange;#F39C12;Attention, en attente
+Rouge;--red;#E74C3C;Urgence, erreur
+Rose;—;#E84393;Avenants (contrats)
+
+Typographie;Principale;DM Sans;Google Fonts, 300-800 weight
+Typographie;Monospace;Space Mono;Scores, numéros, compteurs
+Dimensions;Sidebar;260px;Fixe à gauche
+Dimensions;Header;72px;Sticky en haut
+Dimensions;Radius;16px / 10px;Cards / boutons
+Dimensions;Drawer;540-580px;Panel latéral droite
+Dimensions;Modal;500-560px;Dialog centré
+
+COMPOSANTS UI RÉUTILISABLES
+Composant;Description;Variantes;Interactions
+KPI Card;Carte métrique avec icône, valeur, label, trend;4-5 par page, couleurs variées;Hover lift, cliquable sur Missions/Contrats pour filtrer
+Table;Tableau données avec thead sticky, lignes hover;Candidats (7 cols), Missions (8 cols), Contrats (7 cols);Clic ligne → ouvre drawer, stagger animation
+Grille Cards;Vue alternative en grid de cards;Candidats grille, Kanban missions;Toggle avec vue Table
+Drawer;Panel latéral droit 540-580px;Profil candidat, Détail mission, Détail contrat;Overlay click ferme, bouton ✕, slide animation
+Modal;Dialog centré avec overlay;Import CV, Nouvelle mission, Nouveau contrat, Avenant;Scale+fadeIn animation, Annuler/Confirmer
+Pill / Filtre;Bouton arrondi toggle pour filtrage;Par statut, par client, par urgence;Clic → filtre + re-render table
+Status Badge;Label coloré inline pour statuts;Disponible/Actif/En mission/À signer/Terminé/Urgent;Couleur fond+texte selon statut
+Score Bar;Barre de progression horizontale;Score IA (0-100), Avancement contrat (%);Animated width, couleur vert/orange/rouge
+Toast;Notification temporaire bas-centre;Message texte, 3-3.5s;Slide up + fade in/out
+Search Box;Champ recherche avec icône loupe;Recherche temps réel oninput;Focus → border accent + glow
+Chat Widget;Bulle IA flottante bottom-right;Dashboard uniquement;Toggle panel, pulse animation
+Avatar;Cercle/carré arrondi avec initiales;Gradient unique par personne, 28-72px;Dans tables, drawers, cards
+
+DONNÉES MÉTIER — CANDIDATS (15 entrées mock)
+ID;Nom;Initiales;Rôle;Score IA;Statut;Localisation;Compétences clés
+1;Marc Lefèvre;ML;Cariste CACES 3;92;Disponible;Lyon 7e;CACES 3, Entrepôt, Picking
+2;Thomas Roche;TR;Cariste CACES 1,3,5;89;Disponible;Villeurbanne;CACES 1,3,5, Gerbage
+3;Sarah Dubois;SD;Préparatrice commandes;87;Disponible;Saint-Priest;Prépa, Scan RF, PDA
+4;Fatima El Amrani;FA;Cariste CACES 3,5;85;En mission;Vénissieux;CACES 3,5, Chargement
+5;Antoine Girard;AG;Manutentionnaire;78;Disponible;Décines;Manutention, Port charges
+6;Julie Martin;JM;Agent de production;81;En mission;Oullins;Production, BPF
+7;Sophie Morel;SM;Cariste junior;72;Disponible;Bron;CACES 3, Formation récente
+8;Nadia Khelif;NK;Agent logistique;76;En mission;Saint-Priest;Logistique, Scan RF
+9;Karim Benali;KB;Manutentionnaire;74;Indisponible;Vaulx-en-Velin;Manutention, Port charges
+10;Pierre Blanc;PB;Cariste confirmé;88;Disponible;Gerland;CACES 1,3,5, 8 ans exp.
+11;Lucas Ferreira;LF;Préparateur commandes;69;Dormant;Meyzieu;Prépa, Commande vocale
+12;Amina Diallo;AD;Agent de production;82;Disponible;Gerland;Production, Qualité
+13;Hugo Mercier;HM;Manutentionnaire;65;Dormant;Corbas;Manutention basique
+14;Emma Laurent;EL;Prépa. commandes frais;79;Disponible;Décines;Froid, Prépa, CACES 1
+15;Omar Sayed;OS;Cariste CACES 5;58;Indisponible;Corbas;CACES 5, Grande hauteur
+
+DONNÉES MÉTIER — MISSIONS (8 entrées mock)
+ID;Intitulé;Client;Lieu;Urgence;Statut;Postes total;Postes pourvus;Matchings IA;Dates;Horaires;Compétences requises
+1;Caristes CACES 3;Carrefour Supply Chain;Saint-Priest;Haute;Ouverte;4;2;12;10 fév. → 28 mars;2x8;CACES 3, Entrepôt, Visite méd.
+2;Prépa. commandes;Amazon FBA;Saint-Priest;Haute;Ouverte;6;3;18;12 fév. → 15 avril;3x8;Prépa, Scan RF, Port charges
+3;Agents de production;Sanofi;Gerland;Moyen;En cours;3;2;8;17 fév. → 30 juin;3x8;Production, BPF, CACES 1
+4;Cariste CACES 5 — Grande hauteur;FM Logistic;Vénissieux;Haute;Urgente;2;0;5;14 fév. → 28 fév.;Journée;CACES 5, Grande hauteur, 3 ans exp.
+5;Manutentionnaires;Rhenus Logistics;Corbas;Moyen;Ouverte;5;3;14;10 fév. → 31 mars;2x8;Manutention, Port charges, Visite méd.
+6;Préparateur commandes frais;Carrefour Supply Chain;Décines;Basse;En cours;2;2;6;3 fév. → 28 fév.;Matin;Prépa, Froid, CACES 1
+7;Cariste CACES 1;Amazon FBA;Saint-Priest;Basse;Pourvue;3;3;9;3 fév. → 15 mars;3x8;CACES 1, Entrepôt
+8;Agents logistiques polyvalents;Rhenus Logistics;Corbas;Moyen;Ouverte;4;1;11;17 fév. → 30 avril;2x8;Logistique, Polyvalent, Scan RF
+
+DONNÉES MÉTIER — CONTRATS (10 entrées mock)
+ID;Candidat;Rôle;Client;Lieu;Date début;Date fin;Horaires;Taux horaire;Statut;Nb avenants;N° contrat
+1;Marc Lefèvre;Cariste CACES 3;Carrefour Supply Chain;Entrepôt Vénissieux;13/01/2026;14/03/2026;6h-14h;12,50 €;Actif;2;CTT-2026-0087
+2;Thomas Roche;Cariste CACES 1,3,5;Carrefour Supply Chain;Entrepôt Vénissieux;03/02/2026;28/02/2026;14h-22h;13,20 €;Actif;0;CTT-2026-0091
+3;Julie Martin;Préparatrice commandes;Amazon — Saint-Priest;Centre Amazon STR1;03/02/2026;21/02/2026;5h-13h;11,80 €;Actif;1;CTT-2026-0093
+4;Nadia Khelif;Agent logistique;Amazon — Saint-Priest;Centre Amazon STR1;03/02/2026;14/02/2026;5h-13h;11,52 €;Expire bientôt;0;CTT-2026-0094
+5;Karim Benali;Cariste;Carrefour Supply Chain;Entrepôt Vénissieux;10/02/2026;07/03/2026;6h-14h;12,00 €;Actif;0;CTT-2026-0096
+6;Pierre Blanc;Cariste confirmé;Sanofi — Gerland;Site Sanofi Gerland;10/02/2026;09/05/2026;7h-15h;13,80 €;À signer;0;CTT-2026-0097
+7;Omar Sayed;Cariste CACES 5;FM Logistic;Plateforme Corbas;17/02/2026;14/03/2026;6h-14h;13,00 €;À signer;0;CTT-2026-0098
+8;Sarah Dubois;Préparatrice commandes;Amazon — Saint-Priest;Centre Amazon STR1;01/12/2025;31/01/2026;5h-13h;11,52 €;Terminé;1;CTT-2025-0412
+9;Fatima El Amrani;Cariste;Sanofi — Gerland;Site Sanofi Gerland;04/11/2025;17/01/2026;7h-15h;12,00 €;Terminé;2;CTT-2025-0378
+10;Sophie Morel;Cariste junior;Carrefour Supply Chain;Entrepôt Vénissieux;12/02/2026;14/02/2026;6h-14h;11,88 €;Expire bientôt;0;CTT-2026-0099
+
+DONNÉES MÉTIER — CLIENTS
+Client;Emoji;Secteur;Localisation
+Carrefour Supply Chain;🏪;Grande distribution / Logistique;Vénissieux, Décines
+Amazon — Saint-Priest;📦;E-commerce / Logistique;Saint-Priest (Centre STR1)
+Sanofi — Gerland;💊;Pharmaceutique;Gerland, Saint-Fons
+FM Logistic;🏭;Logistique;Vénissieux, Corbas
+Rhenus Logistics;🚛;Transport / Logistique;Corbas
+Veolia;🏗️;Services / Maintenance;Villeurbanne
+
+FONCTIONNALITÉS IA
+Module IA;Description;Entrée;Sortie;Page concernée
+Matching IA;Trouve les meilleurs candidats pour une mission selon critères;Mission + critères (localisation, CACES, expérience, score min, horaires);Liste candidats scorés 0-100% avec détails;Matching
+Scoring CV;Analyse automatique d'un CV uploadé et notation multi-critères;Fichier CV (PDF/DOCX/JPG);Score global + 6 sous-scores (expérience, formation, compétences, soft skills, disponibilité, adéquation);Scoring CV
+Relances Auto;Campagnes de relance automatisées des candidats inactifs;Cible (critères candidats) + canal (SMS/Email/Appel) + message;Campagne avec métriques (envoyés, répondus, taux, réactivés);Relances
+Extraction CV;Extraction automatique des infos d'un CV uploadé;Fichiers CV multiples (jusqu'à 50);Fiches candidats pré-remplies dans la CVthèque;Candidats (import)
+Pré-remplissage contrat;Génération automatique de contrat à partir des données candidat/client;Candidat + Client + Mission;Contrat CTT pré-rempli;Contrats
+Chat Agent IA;Assistant conversationnel pour recherche rapide et actions;Question texte ou vocale;Réponse + actions suggérées;Dashboard
+
+ÉLÉMENTS À DÉVELOPPER (ROADMAP)
+Priorité;Élément;Description;Complexité estimée
+P0 — Critique;Backend API;API REST pour remplacer les données mock (Node.js / Python);Haute
+P0 — Critique;Base de données;PostgreSQL ou MongoDB pour candidats, missions, contrats, avenants;Haute
+P0 — Critique;Authentification;Login/Register, rôles (admin, consultant, client), JWT;Moyenne
+P1 — Important;Intégration IA réelle;Connexion API OpenAI/Anthropic pour matching, scoring, extraction CV;Haute
+P1 — Important;Signature électronique;Intégration DocuSign ou Yousign pour contrats et avenants;Moyenne
+P1 — Important;Notifications temps réel;WebSocket pour notifications push (nouveau match, contrat signé);Moyenne
+P1 — Important;SMS/Email réels;Intégration Twilio (SMS) + SendGrid/Mailjet (Email) pour relances;Moyenne
+P2 — Nice to have;Responsive mobile;Adaptation UI tablette et mobile;Moyenne
+P2 — Nice to have;Export PDF/Excel;Génération de rapports, contrats, fiches candidats en PDF;Basse
+P2 — Nice to have;Drag & Drop Kanban;Déplacement de cards entre colonnes (missions);Basse
+P2 — Nice to have;Dashboard analytics avancé;Graphiques Chart.js, métriques historiques, tendances;Moyenne
+P3 — Futur;Multi-agences;Support multi-tenant pour plusieurs agences;Haute
+P3 — Futur;App mobile native;React Native ou Flutter pour consultants terrain;Très haute
+P3 — Futur;Intégration SIRH;Connexion aux logiciels métier intérim (Pixid, Tempo, Anael);Haute
