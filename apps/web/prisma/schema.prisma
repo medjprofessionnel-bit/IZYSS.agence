@@ -1,0 +1,204 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── AGENCE ───────────────────────────────────────────────────────────────────
+model Agency {
+  id             String          @id @default(cuid())
+  name           String
+  users          User[]
+  clients        Client[]
+  candidates     Candidate[]
+  missions       Mission[]
+  scoringPresets ScoringPreset[]
+  createdAt      DateTime        @default(now())
+}
+
+// ─── UTILISATEURS (Better Auth compatible) ───────────────────────────────────
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  role          String    @default("agency_admin") // agency_admin | client
+  agencyId      String?
+  agency        Agency?   @relation(fields: [agencyId], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Account {
+  id                   String    @id @default(cuid())
+  accountId            String
+  providerId           String
+  userId               String
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken          String?
+  refreshToken         String?
+  idToken              String?
+  accessTokenExpiresAt DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                String?
+  password             String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@unique([providerId, accountId])
+}
+
+model Verification {
+  id         String    @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @updatedAt
+
+  @@unique([identifier, value])
+}
+
+// ─── SCORING PRESETS ──────────────────────────────────────────────────────────
+model ScoringPreset {
+  id        String   @id @default(cuid())
+  name      String
+  jobType   String?
+  isDefault Boolean  @default(false)
+  criteria  Json
+  agencyId  String
+  agency    Agency   @relation(fields: [agencyId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+// ─── CLIENTS ──────────────────────────────────────────────────────────────────
+model Client {
+  id        String    @id @default(cuid())
+  name      String
+  contact   String?
+  email     String?
+  phone     String?
+  address   String?
+  agencyId  String
+  agency    Agency    @relation(fields: [agencyId], references: [id])
+  missions  Mission[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+// ─── CANDIDATS ────────────────────────────────────────────────────────────────
+model Candidate {
+  id                 String              @id @default(cuid())
+  firstName          String
+  lastName           String
+  email              String?
+  phone              String?
+  address            String?
+  city               String?
+  skills             String[]
+  experience         Int?
+  availability       Availability        @default(AVAILABLE)
+  cvUrl              String?
+  agencyId           String
+  agency             Agency              @relation(fields: [agencyId], references: [id])
+  pipelineCandidates PipelineCandidate[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+}
+
+enum Availability {
+  AVAILABLE
+  BUSY
+  UNAVAILABLE
+}
+
+// ─── MISSIONS ─────────────────────────────────────────────────────────────────
+model Mission {
+  id          String        @id @default(cuid())
+  title       String
+  description String?
+  location    String?
+  startDate   DateTime?
+  endDate     DateTime?
+  hourlyRate  Float?
+  status      MissionStatus @default(OPEN)
+  source      MissionSource @default(MANUAL)
+  clientId    String
+  client      Client        @relation(fields: [clientId], references: [id])
+  agencyId    String
+  agency      Agency        @relation(fields: [agencyId], references: [id])
+  pipeline    Pipeline?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+enum MissionStatus {
+  OPEN
+  IN_PROGRESS
+  FILLED
+  CANCELLED
+}
+
+enum MissionSource {
+  EMAIL
+  PORTAL
+  MANUAL
+}
+
+// ─── PIPELINE AUTO ────────────────────────────────────────────────────────────
+model Pipeline {
+  id         String              @id @default(cuid())
+  missionId  String              @unique
+  mission    Mission             @relation(fields: [missionId], references: [id])
+  status     PipelineStatus      @default(RUNNING)
+  candidates PipelineCandidate[]
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+}
+
+enum PipelineStatus {
+  RUNNING
+  WAITING_CLIENT
+  WAITING_AGENCY
+  COMPLETED
+  ALERT
+}
+
+model PipelineCandidate {
+  id              String    @id @default(cuid())
+  pipelineId      String
+  pipeline        Pipeline  @relation(fields: [pipelineId], references: [id])
+  candidateId     String
+  candidate       Candidate @relation(fields: [candidateId], references: [id])
+  smsStatus       SmsStatus @default(SENT)
+  response        String?
+  selected        Boolean   @default(false)
+  clientValidated Boolean   @default(false)
+  agencyValidated Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+}
+
+enum SmsStatus {
+  SENT
+  ACCEPTED
+  DECLINED
+  NO_RESPONSE
+}
