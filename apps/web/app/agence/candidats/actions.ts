@@ -199,7 +199,7 @@ export async function deleteCandidates(ids: string[]) {
     select: { id: true, cvUrl: true },
   })
 
-  const filesToDelete = candidates.map((c) => c.cvUrl).filter(Boolean) as string[]
+  const filesToDelete = candidates.map((c: { id: string; cvUrl: string | null }) => c.cvUrl).filter(Boolean) as string[]
   if (filesToDelete.length > 0) {
     await supabase.storage.from("Cvs").remove(filesToDelete)
   }
