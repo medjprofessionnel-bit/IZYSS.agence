@@ -133,22 +133,25 @@ enum Availability {
 
 // ─── MISSIONS ─────────────────────────────────────────────────────────────────
 model Mission {
-  id          String        @id @default(cuid())
-  title       String
-  description String?
-  location    String?
-  startDate   DateTime?
-  endDate     DateTime?
-  hourlyRate  Float?
-  status      MissionStatus @default(OPEN)
-  source      MissionSource @default(MANUAL)
-  clientId    String
-  client      Client        @relation(fields: [clientId], references: [id])
-  agencyId    String
-  agency      Agency        @relation(fields: [agencyId], references: [id])
-  pipeline    Pipeline?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id               String        @id @default(cuid())
+  title            String
+  description      String?
+  location         String?
+  startDate        DateTime?
+  endDate          DateTime?
+  hourlyRate       Float?
+  status           MissionStatus @default(OPEN)
+  source           MissionSource @default(MANUAL)
+  targetCandidates Int?          // Nombre de candidats recherchés
+  channels         String[]      // Canaux d'envoi CV: SMS | WHATSAPP | EMAIL | PORTAL
+  requiredSkills   String[]      // Compétences requises pour le matching IA
+  clientId         String
+  client           Client        @relation(fields: [clientId], references: [id])
+  agencyId         String
+  agency           Agency        @relation(fields: [agencyId], references: [id])
+  pipeline         Pipeline?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 }
 
 enum MissionStatus {
@@ -184,17 +187,19 @@ enum PipelineStatus {
 }
 
 model PipelineCandidate {
-  id              String    @id @default(cuid())
-  pipelineId      String
-  pipeline        Pipeline  @relation(fields: [pipelineId], references: [id])
-  candidateId     String
-  candidate       Candidate @relation(fields: [candidateId], references: [id])
-  smsStatus       SmsStatus @default(SENT)
-  response        String?
-  selected        Boolean   @default(false)
-  clientValidated Boolean   @default(false)
-  agencyValidated Boolean   @default(false)
-  createdAt       DateTime  @default(now())
+  id               String    @id @default(cuid())
+  pipelineId       String
+  pipeline         Pipeline  @relation(fields: [pipelineId], references: [id])
+  candidateId      String
+  candidate        Candidate @relation(fields: [candidateId], references: [id])
+  smsStatus        SmsStatus @default(SENT)
+  response         String?
+  selected         Boolean   @default(false)
+  proposedToClient Boolean   @default(false) // CV anonymisé envoyé au client
+  proposedAt       DateTime?                 // Date d'envoi au client
+  clientValidated  Boolean   @default(false)
+  agencyValidated  Boolean   @default(false)
+  createdAt        DateTime  @default(now())
 }
 
 enum SmsStatus {
