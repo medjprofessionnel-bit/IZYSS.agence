@@ -92,17 +92,18 @@ model ScoringPreset {
 
 // ─── CLIENTS ──────────────────────────────────────────────────────────────────
 model Client {
-  id        String    @id @default(cuid())
-  name      String
-  contact   String?
-  email     String?
-  phone     String?
-  address   String?
-  agencyId  String
-  agency    Agency    @relation(fields: [agencyId], references: [id])
-  missions  Mission[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id          String    @id @default(cuid())
+  name        String
+  contact     String?
+  email       String?
+  phone       String?
+  address     String?
+  portalToken String?   @unique // Token unique pour le portail client
+  agencyId    String
+  agency      Agency    @relation(fields: [agencyId], references: [id])
+  missions    Mission[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 // ─── CANDIDATS ────────────────────────────────────────────────────────────────
@@ -187,19 +188,27 @@ enum PipelineStatus {
 }
 
 model PipelineCandidate {
-  id               String    @id @default(cuid())
+  id               String          @id @default(cuid())
   pipelineId       String
-  pipeline         Pipeline  @relation(fields: [pipelineId], references: [id])
+  pipeline         Pipeline        @relation(fields: [pipelineId], references: [id])
   candidateId      String
-  candidate        Candidate @relation(fields: [candidateId], references: [id])
-  smsStatus        SmsStatus @default(SENT)
+  candidate        Candidate       @relation(fields: [candidateId], references: [id])
+  smsStatus        SmsStatus       @default(SENT)
   response         String?
-  selected         Boolean   @default(false)
-  proposedToClient Boolean   @default(false) // CV anonymisé envoyé au client
-  proposedAt       DateTime?                 // Date d'envoi au client
-  clientValidated  Boolean   @default(false)
-  agencyValidated  Boolean   @default(false)
-  createdAt        DateTime  @default(now())
+  selected         Boolean         @default(false)
+  proposedToClient Boolean         @default(false)
+  proposedAt       DateTime?
+  portalVisibility PortalVisibility @default(ANONYMOUS)
+  clientValidated  Boolean         @default(false)
+  clientRefused    Boolean         @default(false)
+  agencyValidated  Boolean         @default(false)
+  createdAt        DateTime        @default(now())
+}
+
+enum PortalVisibility {
+  FULL      // Profil complet avec nom, contact
+  PARTIAL   // Nom masqué, compétences visibles
+  ANONYMOUS // Tout anonymisé
 }
 
 enum SmsStatus {

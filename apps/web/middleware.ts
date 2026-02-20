@@ -5,11 +5,10 @@ export async function middleware(request: NextRequest) {
   const session = getSessionCookie(request)
   const { pathname } = request.nextUrl
 
-  // Routes protégées : redirige vers /login si pas de session
+  // /client est accessible sans session (portail client via token)
   const isProtected =
     pathname.startsWith("/agence") ||
-    pathname.startsWith("/portail") ||
-    pathname.startsWith("/client")
+    pathname.startsWith("/portail")
 
   if (isProtected && !session) {
     return NextResponse.redirect(new URL("/login", request.url))
@@ -37,6 +36,5 @@ export const config = {
     "/login",
     "/agence/:path*",
     "/portail/:path*",
-    "/client/:path*",
   ],
 }
