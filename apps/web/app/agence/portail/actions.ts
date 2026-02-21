@@ -137,6 +137,29 @@ export async function clientValidate(token: string, pipelineCandidateId: string)
   return { success: true }
 }
 
+// ─── CLIENT COMMENTE UN CANDIDAT ──────────────────────────────────────────────
+
+export async function clientComment(token: string, pipelineCandidateId: string, comment: string) {
+  const pc = await prisma.pipelineCandidate.findUnique({
+    where: { id: pipelineCandidateId },
+    include: {
+      pipeline: { include: { mission: { include: { client: true } } } },
+    },
+  })
+
+  if (!pc || pc.pipeline.mission.client.portalToken !== token) {
+    throw new Error("Accès non autorisé")
+  }
+
+  await prisma.pipelineCandidate.update({
+    where: { id: pipelineCandidateId },
+    data: { clientComment: comment },
+  })
+
+  revalidatePath("/agence/portail")
+  return { success: true }
+}
+
 // ─── CLIENT REFUSE UN CANDIDAT ────────────────────────────────────────────────
 
 export async function clientRefuse(token: string, pipelineCandidateId: string) {

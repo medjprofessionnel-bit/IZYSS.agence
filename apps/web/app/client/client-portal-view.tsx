@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { clientValidate, clientRefuse } from "@/app/agence/portail/actions"
+import { clientValidate, clientRefuse, clientComment as saveComment } from "@/app/agence/portail/actions"
 
 type Candidate = {
   id: string
@@ -17,6 +17,7 @@ type PipelineCandidate = {
   portalVisibility: string
   clientValidated: boolean
   clientRefused: boolean
+  clientComment: string | null
   proposedAt: Date | null
   candidate: Candidate
 }
@@ -42,6 +43,9 @@ export function ClientPortalView({ client, token }: { client: Client; token: str
   const [isPending, startTransition] = useTransition()
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null)
   const [localStates, setLocalStates] = useState<Record<string, "validated" | "refused" | null>>({})
+  const [localComments, setLocalComments] = useState<Record<string, string>>({})
+  const [openComment, setOpenComment] = useState<string | null>(null)
+  const [commentDraft, setCommentDraft] = useState("")
 
   function showToast(msg: string, type: "success" | "error" = "success") {
     setToast({ msg, type })
@@ -53,9 +57,9 @@ export function ClientPortalView({ client, token }: { client: Client; token: str
       try {
         await clientValidate(token, pcId)
         setLocalStates((s) => ({ ...s, [pcId]: "validated" }))
-        showToast("Candidat validé avec succès ✅")
+        showToast("Intérêt confirmé ✅")
       } catch {
-        showToast("Erreur lors de la validation", "error")
+        showToast("Erreur", "error")
       }
     })
   }
@@ -65,25 +69,48 @@ export function ClientPortalView({ client, token }: { client: Client; token: str
       try {
         await clientRefuse(token, pcId)
         setLocalStates((s) => ({ ...s, [pcId]: "refused" }))
-        showToast("Candidat refusé")
+        showToast("Réponse enregistrée")
       } catch {
-        showToast("Erreur lors du refus", "error")
+        showToast("Erreur", "error")
+      }
+    })
+  }
+
+  function openCommentBox(pcId: string, existingComment: string | null) {
+    setOpenComment(pcId)
+    setCommentDraft(existingComment ?? "")
+  }
+
+  function handleSaveComment(pcId: string) {
+    startTransition(async () => {
+      try {
+        await saveComment(token, pcId, commentDraft)
+        setLocalComments((s) => ({ ...s, [pcId]: commentDraft }))
+        setOpenComment(null)
+        showToast("Commentaire enregistré 💬")
+      } catch {
+        showToast("Erreur", "error")
       }
     })
   }
 
   const allCandidates = client.missions.flatMap((m) =>
-    (m.pipeline?.candidates ?? []).map((pc) => ({ ...pc, missionTitle: m.title, missionTarget: m.targetCandidates }))
+    (m.pipeline?.candidates ?? []).map((pc) => ({
+      ...pc,
+      missionTitle: m.title,
+      missionTarget: m.targetCandidates,
+    }))
   )
 
-  const pendingCount = allCandidates.filter((c) => !c.clientValidated && !c.clientRefused && !localStates[c.id]).length
-  const validatedCount = allCandidates.filter((c) => c.clientValidated || localStates[c.id] === "validated").length
+  const pendingCount = allCandidates.filter(
+    (c) => !c.clientValidated && !c.clientRefused && !localStates[c.id]
+  ).length
+  const validatedCount = allCandidates.filter(
+    (c) => c.clientValidated || localStates[c.id] === "validated"
+  ).length
 
   return (
-    <div style={{
-      minHeight: "100vh", background: "#F4F6FB",
-      fontFamily: "'DM Sans', sans-serif",
-    }}>
+    <div style={{ minHeight: "100vh", background: "#F4F6FB", fontFamily: "'DM Sans', sans-serif" }}>
       {/* Header */}
       <div style={{
         background: "#fff", borderBottom: "1px solid #E8EBF0",
@@ -117,23 +144,27 @@ export function ClientPortalView({ client, token }: { client: Client; token: str
         </div>
       </div>
 
-      <div style={{ maxWidth: 800, margin: "0 auto", padding: "32px 24px" }}>
-        {/* Bienvenue */}
+      <div style={{ maxWidth: 820, margin: "0 auto", padding: "32px 24px" }}>
+        {/* Titre */}
         <div style={{ marginBottom: 28 }}>
           <h1 style={{ fontSize: 22, fontWeight: 800, color: "#1A1D23", margin: "0 0 6px" }}>
             Bonjour 👋
           </h1>
           <p style={{ fontSize: 14, color: "#8892A4", margin: 0 }}>
-            Votre agence vous propose {allCandidates.length} profil{allCandidates.length > 1 ? "s" : ""} — validez ou refusez chaque candidat
+            Votre agence vous propose{" "}
+            <strong style={{ color: "#1A1D23" }}>
+              {allCandidates.length} profil{allCandidates.length > 1 ? "s" : ""}
+            </strong>{" "}
+            — indiquez votre intérêt pour chaque candidat
           </p>
         </div>
 
-        {/* Compteurs */}
+        {/* KPIs */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 28 }}>
           {[
             { label: "Profils proposés", value: allCandidates.length, color: "#6C5CE7", bg: "#F0EEFF" },
             { label: "En attente de votre réponse", value: pendingCount, color: "#F39C12", bg: "#FEF5E7" },
-            { label: "Validés", value: validatedCount, color: "#2ECC71", bg: "#E8F8F0" },
+            { label: "Vous êtes intéressé", value: validatedCount, color: "#2ECC71", bg: "#E8F8F0" },
           ].map((k) => (
             <div key={k.label} style={{
               background: "#fff", borderRadius: 14, padding: "16px 20px",
@@ -145,7 +176,7 @@ export function ClientPortalView({ client, token }: { client: Client; token: str
           ))}
         </div>
 
-        {/* Profils par mission */}
+        {/* Profils */}
         {allCandidates.length === 0 ? (
           <div style={{
             background: "#fff", borderRadius: 20, padding: 48,
@@ -160,33 +191,221 @@ export function ClientPortalView({ client, token }: { client: Client; token: str
             </p>
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             {allCandidates.map((pc) => {
               const localState = localStates[pc.id]
               const isValidated = pc.clientValidated || localState === "validated"
               const isRefused = pc.clientRefused || localState === "refused"
               const isPending2 = !isValidated && !isRefused
+              const comment = localComments[pc.id] ?? pc.clientComment ?? ""
+              const isCommentOpen = openComment === pc.id
+
+              const vis = pc.portalVisibility
+              const name =
+                vis === "FULL"
+                  ? `${pc.candidate.firstName} ${pc.candidate.lastName}`
+                  : vis === "PARTIAL"
+                  ? `Candidat ${pc.candidate.firstName[0]}.`
+                  : "Profil anonyme"
+
+              // PARTIAL : compétences + expérience visibles, mais pas ville ni coordonnées
+              const showSkills = vis !== "ANONYMOUS"
+              const showExp = vis !== "ANONYMOUS"
 
               return (
-                <CandidateCard
+                <div
                   key={pc.id}
-                  pc={pc}
-                  isValidated={isValidated}
-                  isRefused={isRefused}
-                  isPending2={isPending2}
-                  isLoading={isPending}
-                  onValidate={() => handleValidate(pc.id)}
-                  onRefuse={() => handleRefuse(pc.id)}
-                />
+                  style={{
+                    background: "#fff", borderRadius: 16,
+                    border: `1.5px solid ${isValidated ? "#2ECC7140" : isRefused ? "#E74C3C40" : "#E8EBF0"}`,
+                    overflow: "hidden", transition: "all 0.2s",
+                  }}
+                >
+                  {/* Barre colorée top */}
+                  {(isValidated || isRefused) && (
+                    <div style={{
+                      height: 3,
+                      background: isValidated
+                        ? "linear-gradient(90deg, #2ECC71, #27AE60)"
+                        : "linear-gradient(90deg, #E74C3C, #C0392B)",
+                    }} />
+                  )}
+
+                  <div style={{ padding: "20px 24px" }}>
+                    {/* Ligne principale */}
+                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
+                      {/* Infos candidat */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                        <div style={{
+                          width: 50, height: 50, borderRadius: 14, flexShrink: 0,
+                          background: vis === "ANONYMOUS"
+                            ? "linear-gradient(135deg, #9CA3C4, #B0B7C8)"
+                            : "linear-gradient(135deg, #6C5CE7, #A29BFE)",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          color: "#fff", fontWeight: 700, fontSize: 17,
+                        }}>
+                          {vis === "FULL"
+                            ? `${pc.candidate.firstName[0]}${pc.candidate.lastName[0]}`
+                            : vis === "PARTIAL"
+                            ? `${pc.candidate.firstName[0]}?`
+                            : "?"}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 16, fontWeight: 700, color: "#1A1D23" }}>{name}</div>
+                          <div style={{ fontSize: 12, color: "#8892A4", marginTop: 2 }}>
+                            {showExp && pc.candidate.experience !== null
+                              ? `${pc.candidate.experience} an${pc.candidate.experience > 1 ? "s" : ""} d'expérience`
+                              : ""}
+                          </div>
+                          {/* Badge mission */}
+                          <div style={{
+                            marginTop: 6, display: "inline-flex", alignItems: "center", gap: 4,
+                            padding: "2px 8px", borderRadius: 6, background: "#F0EEFF",
+                            fontSize: 11, fontWeight: 600, color: "#6C5CE7",
+                          }}>
+                            📋 {pc.missionTitle}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Boutons intéressé / pas intéressé */}
+                      <div style={{ flexShrink: 0 }}>
+                        {isValidated ? (
+                          <span style={{
+                            padding: "8px 16px", borderRadius: 10, fontSize: 13, fontWeight: 700,
+                            background: "#E8F8F0", color: "#2ECC71",
+                            display: "flex", alignItems: "center", gap: 6,
+                          }}>
+                            ✅ Intéressé
+                          </span>
+                        ) : isRefused ? (
+                          <span style={{
+                            padding: "8px 16px", borderRadius: 10, fontSize: 13, fontWeight: 700,
+                            background: "#FDECEB", color: "#E74C3C",
+                            display: "flex", alignItems: "center", gap: 6,
+                          }}>
+                            ✕ Pas intéressé
+                          </span>
+                        ) : (
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <button
+                              onClick={() => handleRefuse(pc.id)}
+                              disabled={isPending}
+                              style={{
+                                padding: "9px 16px", borderRadius: 10, fontSize: 13, fontWeight: 600,
+                                border: "1.5px solid #E8EBF0", background: "#fff",
+                                color: "#6B7294", cursor: isPending ? "not-allowed" : "pointer",
+                              }}
+                            >
+                              ✕ Pas intéressé
+                            </button>
+                            <button
+                              onClick={() => handleValidate(pc.id)}
+                              disabled={isPending}
+                              style={{
+                                padding: "9px 20px", borderRadius: 10, fontSize: 13, fontWeight: 700,
+                                background: "linear-gradient(135deg, #2ECC71, #27AE60)",
+                                border: "none", color: "#fff",
+                                cursor: isPending ? "not-allowed" : "pointer",
+                                boxShadow: "0 4px 12px rgba(46,204,113,0.3)",
+                              }}
+                            >
+                              ✓ Intéressé
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Compétences */}
+                    {showSkills && pc.candidate.skills.length > 0 && (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 14 }}>
+                        {pc.candidate.skills.slice(0, 7).map((s) => (
+                          <span key={s} style={{
+                            padding: "4px 10px", borderRadius: 20, fontSize: 11, fontWeight: 600,
+                            background: "#F4F6FB", color: "#6B7294",
+                          }}>{s}</span>
+                        ))}
+                      </div>
+                    )}
+
+                    {vis === "ANONYMOUS" && (
+                      <div style={{
+                        marginTop: 12, padding: "10px 14px", borderRadius: 10,
+                        background: "#F4F6FB", display: "flex", alignItems: "center", gap: 8,
+                      }}>
+                        <span style={{ fontSize: 14 }}>🔒</span>
+                        <span style={{ fontSize: 12, color: "#8892A4" }}>
+                          Profil confidentiel — les détails seront communiqués sur demande
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Bulle commentaire */}
+                    <div style={{ marginTop: 14 }}>
+                      {!isCommentOpen ? (
+                        <button
+                          onClick={() => openCommentBox(pc.id, pc.clientComment)}
+                          style={{
+                            background: "none", border: "none", cursor: "pointer",
+                            display: "flex", alignItems: "center", gap: 6,
+                            fontSize: 12, color: comment ? "#6C5CE7" : "#B0B7C8",
+                            fontWeight: comment ? 600 : 400, padding: 0,
+                          }}
+                        >
+                          💬 {comment ? `"${comment.slice(0, 60)}${comment.length > 60 ? "…" : ""}"` : "Ajouter un commentaire"}
+                        </button>
+                      ) : (
+                        <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+                          <textarea
+                            value={commentDraft}
+                            onChange={(e) => setCommentDraft(e.target.value)}
+                            placeholder="Votre commentaire pour l'agence..."
+                            rows={2}
+                            autoFocus
+                            style={{
+                              flex: 1, padding: "10px 12px", borderRadius: 10,
+                              border: "1.5px solid #6C5CE7", fontSize: 13,
+                              outline: "none", resize: "none", fontFamily: "inherit",
+                              color: "#1A1D23",
+                            }}
+                          />
+                          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                            <button
+                              onClick={() => handleSaveComment(pc.id)}
+                              disabled={isPending}
+                              style={{
+                                padding: "8px 14px", borderRadius: 8, fontSize: 12, fontWeight: 700,
+                                background: "#6C5CE7", border: "none", color: "#fff",
+                                cursor: isPending ? "not-allowed" : "pointer",
+                              }}
+                            >
+                              Envoyer
+                            </button>
+                            <button
+                              onClick={() => setOpenComment(null)}
+                              style={{
+                                padding: "7px 14px", borderRadius: 8, fontSize: 12,
+                                background: "none", border: "1.5px solid #E8EBF0",
+                                color: "#8892A4", cursor: "pointer",
+                              }}
+                            >
+                              Annuler
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               )
             })}
           </div>
         )}
 
-        {/* Footer */}
         <div style={{ marginTop: 40, textAlign: "center" }}>
           <p style={{ fontSize: 12, color: "#B0B7C8" }}>
-            Propulsé par <strong style={{ color: "#6C5CE7" }}>IZYSS</strong> — IA au service de l'intérim
+            Propulsé par <strong style={{ color: "#6C5CE7" }}>IZYSS</strong> — IA au service de l&apos;intérim
           </p>
         </div>
       </div>
@@ -203,155 +422,6 @@ export function ClientPortalView({ client, token }: { client: Client; token: str
           {toast.msg}
         </div>
       )}
-    </div>
-  )
-}
-
-function CandidateCard({
-  pc, isValidated, isRefused, isPending2, isLoading, onValidate, onRefuse,
-}: {
-  pc: PipelineCandidate & { missionTitle: string; missionTarget: number | null }
-  isValidated: boolean
-  isRefused: boolean
-  isPending2: boolean
-  isLoading: boolean
-  onValidate: () => void
-  onRefuse: () => void
-}) {
-  const vis = pc.portalVisibility
-  const name = vis === "FULL"
-    ? `${pc.candidate.firstName} ${pc.candidate.lastName}`
-    : vis === "PARTIAL"
-    ? `Candidat ${pc.candidate.firstName[0]}.`
-    : "Profil anonyme"
-
-  const city = vis !== "ANONYMOUS" ? pc.candidate.city : null
-  const exp = vis !== "ANONYMOUS" ? pc.candidate.experience : null
-
-  return (
-    <div style={{
-      background: "#fff", borderRadius: 16,
-      border: `1.5px solid ${isValidated ? "#2ECC7140" : isRefused ? "#E74C3C40" : "#E8EBF0"}`,
-      overflow: "hidden",
-      transition: "all 0.2s",
-    }}>
-      {/* Barre colorée top */}
-      {(isValidated || isRefused) && (
-        <div style={{
-          height: 3,
-          background: isValidated
-            ? "linear-gradient(90deg, #2ECC71, #27AE60)"
-            : "linear-gradient(90deg, #E74C3C, #C0392B)",
-        }} />
-      )}
-
-      <div style={{ padding: "20px 24px" }}>
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
-          {/* Infos candidat */}
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <div style={{
-              width: 48, height: 48, borderRadius: 12, flexShrink: 0,
-              background: vis === "ANONYMOUS"
-                ? "linear-gradient(135deg, #9CA3C4, #B0B7C8)"
-                : "linear-gradient(135deg, #6C5CE7, #A29BFE)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              color: "#fff", fontWeight: 700, fontSize: 16,
-            }}>
-              {vis === "FULL"
-                ? `${pc.candidate.firstName[0]}${pc.candidate.lastName[0]}`
-                : vis === "PARTIAL"
-                ? `${pc.candidate.firstName[0]}?`
-                : "?"}
-            </div>
-            <div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: "#1A1D23" }}>{name}</div>
-              <div style={{ fontSize: 12, color: "#8892A4", marginTop: 2 }}>
-                {city && `${city} · `}
-                {exp !== null ? `${exp} an${exp > 1 ? "s" : ""} d'expérience` : ""}
-              </div>
-              {/* Mission */}
-              <div style={{
-                marginTop: 6, display: "inline-flex", alignItems: "center", gap: 4,
-                padding: "2px 8px", borderRadius: 6, background: "#F0EEFF",
-                fontSize: 11, fontWeight: 600, color: "#6C5CE7",
-              }}>
-                📋 {pc.missionTitle}
-              </div>
-            </div>
-          </div>
-
-          {/* Statut ou boutons */}
-          <div style={{ flexShrink: 0 }}>
-            {isValidated ? (
-              <span style={{
-                padding: "8px 16px", borderRadius: 10, fontSize: 13, fontWeight: 700,
-                background: "#E8F8F0", color: "#2ECC71",
-                display: "flex", alignItems: "center", gap: 6,
-              }}>
-                ✅ Validé
-              </span>
-            ) : isRefused ? (
-              <span style={{
-                padding: "8px 16px", borderRadius: 10, fontSize: 13, fontWeight: 700,
-                background: "#FDECEB", color: "#E74C3C",
-                display: "flex", alignItems: "center", gap: 6,
-              }}>
-                ❌ Refusé
-              </span>
-            ) : (
-              <div style={{ display: "flex", gap: 8 }}>
-                <button
-                  onClick={onRefuse}
-                  disabled={isLoading}
-                  style={{
-                    padding: "9px 16px", borderRadius: 10, fontSize: 13, fontWeight: 600,
-                    border: "1.5px solid #E8EBF0", background: "#fff",
-                    color: "#6B7294", cursor: isLoading ? "not-allowed" : "pointer",
-                  }}
-                >
-                  ✕ Refuser
-                </button>
-                <button
-                  onClick={onValidate}
-                  disabled={isLoading}
-                  style={{
-                    padding: "9px 18px", borderRadius: 10, fontSize: 13, fontWeight: 600,
-                    background: "linear-gradient(135deg, #2ECC71, #27AE60)",
-                    border: "none", color: "#fff",
-                    cursor: isLoading ? "not-allowed" : "pointer",
-                    boxShadow: "0 4px 12px rgba(46,204,113,0.3)",
-                  }}
-                >
-                  ✓ Valider
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Compétences */}
-        {pc.candidate.skills.length > 0 && vis !== "ANONYMOUS" && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 14 }}>
-            {pc.candidate.skills.slice(0, 6).map((s) => (
-              <span key={s} style={{
-                padding: "4px 10px", borderRadius: 20, fontSize: 11, fontWeight: 600,
-                background: "#F4F6FB", color: "#6B7294",
-              }}>{s}</span>
-            ))}
-          </div>
-        )}
-        {vis === "ANONYMOUS" && (
-          <div style={{
-            marginTop: 12, padding: "10px 14px", borderRadius: 10,
-            background: "#F4F6FB", display: "flex", alignItems: "center", gap: 8,
-          }}>
-            <span style={{ fontSize: 14 }}>🔒</span>
-            <span style={{ fontSize: 12, color: "#8892A4" }}>
-              Profil anonymisé — les détails seront révélés après validation
-            </span>
-          </div>
-        )}
-      </div>
     </div>
   )
 }

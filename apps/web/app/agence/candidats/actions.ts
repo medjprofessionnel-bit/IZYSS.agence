@@ -240,3 +240,79 @@ export async function getCandidates() {
     orderBy: { createdAt: "desc" },
   })
 }
+
+export async function getClientsWithMissions() {
+  const agency = await prisma.agency.findFirst()
+  if (!agency) return []
+
+  return prisma.client.findMany({
+    where: { agencyId: agency.id },
+    include: {
+      missions: {
+        where: { status: "OPEN" },
+        orderBy: { createdAt: "desc" },
+      },
+    },
+    orderBy: { name: "asc" },
+  })
+}
+
+export async function proposeToPortal(candidateId: string, missionId: string) {
+  // Trouver ou créer le pipeline de la mission
+  let pipeline = await prisma.pipeline.findUnique({ where: { missionId } })
+  if (!pipeline) {
+    pipeline = await prisma.pipeline.create({
+      data: { missionId, status: "RUNNING" },
+    })
+  }
+
+  // Vérifier si déjà dans le pipeline
+  const existing = await prisma.pipelineCandidate.findFirst({
+    where: { pipelineId: pipeline.id, candidateId },
+  })
+
+  if (existing) {
+    if (!existing.proposedToClient) {
+      await prisma.pipelineCandidate.update({
+        where: { id: existing.id },
+        data: {
+          proposedToClient: true,
+          proposedAt: new Date(),
+          // PARTIAL : compétences + expérience visibles, coordonnées masquées
+          portalVisibility: "PARTIAL",
+        },
+      })
+    }
+  } else {
+    await prisma.pipelineCandidate.create({
+      data: {
+        pipelineId: pipeline.id,
+        candidateId,
+        proposedToClient: true,
+        proposedAt: new Date(),
+        // PARTIAL : compétences + expérience visibles, coordonnées masquées
+        portalVisibility: "PARTIAL",
+      },
+    })
+  }
+
+  revalidatePath("/agence/portail")
+  revalidatePath("/agence/candidats")
+  return { success: true }
+}
+
+export async function getCandidateProposals(candidateId: string) {
+  return prisma.pipelineCandidate.findMany({
+    where: { candidateId, proposedToClient: true },
+    include: {
+      pipeline: {
+        include: {
+          mission: {
+            include: { client: true },
+          },
+        },
+      },
+    },
+    orderBy: { proposedAt: "desc" },
+  })
+}

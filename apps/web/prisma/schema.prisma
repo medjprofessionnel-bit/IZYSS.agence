@@ -201,6 +201,7 @@ model PipelineCandidate {
   portalVisibility PortalVisibility @default(ANONYMOUS)
   clientValidated  Boolean         @default(false)
   clientRefused    Boolean         @default(false)
+  clientComment    String?
   agencyValidated  Boolean         @default(false)
   createdAt        DateTime        @default(now())
 }
