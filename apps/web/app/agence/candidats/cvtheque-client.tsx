@@ -1,9 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { UploadZone } from "./upload-zone"
-import { deleteCandidate, deleteCandidates, getCvSignedUrl } from "./actions"
+import { deleteCandidate, deleteCandidates, getCvSignedUrl, proposeToPortal } from "./actions"
 
 type Candidate = {
   id: string
@@ -19,7 +19,19 @@ type Candidate = {
   createdAt: Date
 }
 
-export function CvthequeClient({ candidates }: { candidates: Candidate[] }) {
+type Mission = {
+  id: string
+  title: string
+  status: string
+}
+
+type ClientWithMissions = {
+  id: string
+  name: string
+  missions: Mission[]
+}
+
+export function CvthequeClient({ candidates, clients }: { candidates: Candidate[]; clients: ClientWithMissions[] }) {
   const [showUpload, setShowUpload] = useState(false)
   const [search, setSearch] = useState("")
   const [deleting, setDeleting] = useState<string | null>(null)
@@ -27,7 +39,39 @@ export function CvthequeClient({ candidates }: { candidates: Candidate[] }) {
   const [bulkDeleting, setBulkDeleting] = useState(false)
   const [preview, setPreview] = useState<{ name: string; url: string } | null>(null)
   const [loadingPreview, setLoadingPreview] = useState<string | null>(null)
+  const [proposeModal, setProposeModal] = useState<{ candidateId: string; candidateName: string } | null>(null)
+  const [selectedClientId, setSelectedClientId] = useState("")
+  const [selectedMissionId, setSelectedMissionId] = useState("")
+  const [isPending, startTransition] = useTransition()
+  const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null)
   const router = useRouter()
+
+  function showToast(msg: string, type: "success" | "error" = "success") {
+    setToast({ msg, type })
+    setTimeout(() => setToast(null), 3000)
+  }
+
+  function openProposeModal(c: Candidate, e: React.MouseEvent) {
+    e.stopPropagation()
+    setSelectedClientId("")
+    setSelectedMissionId("")
+    setProposeModal({ candidateId: c.id, candidateName: `${c.firstName} ${c.lastName}` })
+  }
+
+  function handlePropose() {
+    if (!proposeModal || !selectedMissionId) return
+    startTransition(async () => {
+      try {
+        await proposeToPortal(proposeModal.candidateId, selectedMissionId)
+        setProposeModal(null)
+        showToast(`${proposeModal.candidateName} proposé au portail client ✅`)
+      } catch {
+        showToast("Erreur lors de la proposition", "error")
+      }
+    })
+  }
+
+  const missionsForClient = clients.find((cl) => cl.id === selectedClientId)?.missions ?? []
 
   async function handlePreview(c: Candidate, e: React.MouseEvent) {
     e.stopPropagation()
@@ -239,6 +283,121 @@ export function CvthequeClient({ candidates }: { candidates: Candidate[] }) {
         </div>
       )}
 
+      {/* Modal Proposer */}
+      {proposeModal && (
+        <div
+          style={{
+            position: "fixed", inset: 0, background: "rgba(26,29,35,0.45)",
+            zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center",
+          }}
+          onClick={() => setProposeModal(null)}
+        >
+          <div
+            style={{
+              background: "#fff", borderRadius: 20, padding: 28,
+              width: "min(480px, 92vw)",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.18)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "#1A1D23" }}>Proposer au portail client</h2>
+                <p style={{ margin: "4px 0 0", fontSize: 13, color: "#8892A4" }}>{proposeModal.candidateName}</p>
+              </div>
+              <button onClick={() => setProposeModal(null)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "#B0B7C8" }}>×</button>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {/* Sélection client */}
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: "#6B7294", textTransform: "uppercase", letterSpacing: "0.5px", display: "block", marginBottom: 6 }}>
+                  Client
+                </label>
+                <select
+                  value={selectedClientId}
+                  onChange={(e) => { setSelectedClientId(e.target.value); setSelectedMissionId("") }}
+                  style={{
+                    width: "100%", padding: "10px 12px", border: "1.5px solid #E8EBF0",
+                    borderRadius: 8, fontSize: 14, color: "#1A1D23",
+                    background: "#fff", outline: "none", boxSizing: "border-box",
+                  }}
+                >
+                  <option value="">— Choisir un client —</option>
+                  {clients.map((cl) => (
+                    <option key={cl.id} value={cl.id}>{cl.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Sélection mission */}
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: "#6B7294", textTransform: "uppercase", letterSpacing: "0.5px", display: "block", marginBottom: 6 }}>
+                  Mission
+                </label>
+                <select
+                  value={selectedMissionId}
+                  onChange={(e) => setSelectedMissionId(e.target.value)}
+                  disabled={!selectedClientId}
+                  style={{
+                    width: "100%", padding: "10px 12px", border: "1.5px solid #E8EBF0",
+                    borderRadius: 8, fontSize: 14, color: "#1A1D23",
+                    background: !selectedClientId ? "#F4F6FB" : "#fff",
+                    outline: "none", boxSizing: "border-box",
+                  }}
+                >
+                  <option value="">— Choisir une mission —</option>
+                  {missionsForClient.map((m) => (
+                    <option key={m.id} value={m.id}>{m.title}</option>
+                  ))}
+                  {selectedClientId && missionsForClient.length === 0 && (
+                    <option disabled>Aucune mission ouverte pour ce client</option>
+                  )}
+                </select>
+              </div>
+
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 4 }}>
+                <button
+                  onClick={() => setProposeModal(null)}
+                  style={{
+                    background: "#fff", color: "#6B7294", border: "1.5px solid #E8EBF0",
+                    borderRadius: 8, padding: "10px 18px", fontSize: 14, fontWeight: 500, cursor: "pointer",
+                  }}
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={handlePropose}
+                  disabled={!selectedMissionId || isPending}
+                  style={{
+                    background: "linear-gradient(135deg, #6C5CE7, #8B7CF6)",
+                    color: "#fff", border: "none", borderRadius: 8,
+                    padding: "10px 20px", fontSize: 14, fontWeight: 700,
+                    cursor: !selectedMissionId || isPending ? "not-allowed" : "pointer",
+                    opacity: !selectedMissionId || isPending ? 0.6 : 1,
+                  }}
+                >
+                  {isPending ? "Envoi…" : "Proposer au portail"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div style={{
+          position: "fixed", bottom: 28, right: 28, zIndex: 9999,
+          background: toast.type === "error" ? "#C53030" : "#276749",
+          color: "#fff", padding: "13px 20px", borderRadius: 10,
+          fontSize: 14, fontWeight: 600,
+          boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
+        }}>
+          {toast.msg}
+        </div>
+      )}
+
       {/* Liste candidats */}
       <div style={{ padding: 32 }}>
         {filtered.length === 0 ? (
@@ -310,6 +469,20 @@ export function CvthequeClient({ candidates }: { candidates: Candidate[] }) {
                     }} className={avail.color}>
                       {avail.label}
                     </span>
+                    {/* Proposer */}
+                    <button
+                      onClick={(e) => openProposeModal(c, e)}
+                      style={{
+                        background: "#F0EEFF", border: "none", cursor: "pointer",
+                        color: "#6C5CE7", fontSize: 12, fontWeight: 700,
+                        padding: "4px 10px", borderRadius: 8, flexShrink: 0,
+                      }}
+                      title="Proposer à un client"
+                      onMouseEnter={(e) => (e.currentTarget.style.background = "#E0DAFF")}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = "#F0EEFF")}
+                    >
+                      Proposer
+                    </button>
                     {/* Aperçu CV */}
                     {c.cvUrl && (
                       <button
