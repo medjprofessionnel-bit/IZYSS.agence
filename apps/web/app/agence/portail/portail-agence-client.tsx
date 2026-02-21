@@ -1,8 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { getOrCreatePortalToken, setPortalVisibility } from "./actions"
-import { proposeToPortal } from "@/app/agence/candidats/actions"
+import { getOrCreatePortalToken, setPortalVisibility, proposeToPortalAction } from "./actions"
 
 type Candidate = {
   id: string
@@ -136,7 +135,7 @@ export function PortailAgenceClient({
     setProposingId(candidateId)
     startTransition(async () => {
       try {
-        await proposeToPortal(candidateId, selectedMissionId)
+        await proposeToPortalAction(candidateId, selectedMissionId)
         showToast("Candidat proposé au portail client ✅")
         setShowProposerModal(false)
         window.location.reload()

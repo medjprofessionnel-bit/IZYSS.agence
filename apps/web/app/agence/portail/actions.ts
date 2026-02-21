@@ -4,6 +4,63 @@ import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
 import { randomBytes } from "crypto"
 
+// ─── TOUS LES CANDIDATS POUR LA MODAL PORTAIL ─────────────────────────────────
+
+export async function getCandidatesForPortal() {
+  const agency = await prisma.agency.findFirst()
+  if (!agency) return []
+  return prisma.candidate.findMany({
+    where: { agencyId: agency.id },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      city: true,
+      skills: true,
+      experience: true,
+      availability: true,
+    },
+    orderBy: { createdAt: "desc" },
+  })
+}
+
+// ─── PROPOSER UN CANDIDAT AU PORTAIL CLIENT ────────────────────────────────────
+
+export async function proposeToPortalAction(candidateId: string, missionId: string) {
+  let pipeline = await prisma.pipeline.findUnique({ where: { missionId } })
+  if (!pipeline) {
+    pipeline = await prisma.pipeline.create({
+      data: { missionId, status: "RUNNING" },
+    })
+  }
+
+  const existing = await prisma.pipelineCandidate.findFirst({
+    where: { pipelineId: pipeline.id, candidateId },
+  })
+
+  if (existing) {
+    if (!existing.proposedToClient) {
+      await prisma.pipelineCandidate.update({
+        where: { id: existing.id },
+        data: { proposedToClient: true, proposedAt: new Date(), portalVisibility: "PARTIAL" },
+      })
+    }
+  } else {
+    await prisma.pipelineCandidate.create({
+      data: {
+        pipelineId: pipeline.id,
+        candidateId,
+        proposedToClient: true,
+        proposedAt: new Date(),
+        portalVisibility: "PARTIAL",
+      },
+    })
+  }
+
+  revalidatePath("/agence/portail")
+  return { success: true }
+}
+
 // ─── GÉNÉRER / RÉCUPÉRER LE TOKEN PORTAIL D'UN CLIENT ─────────────────────────
 
 export async function getOrCreatePortalToken(clientId: string) {

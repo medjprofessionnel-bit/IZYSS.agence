@@ -1,5 +1,4 @@
-import { getPortalAgenceData } from "./actions"
-import { getCandidates } from "@/app/agence/candidats/actions"
+import { getPortalAgenceData, getCandidatesForPortal } from "./actions"
 import { PortailAgenceClient } from "./portail-agence-client"
 
 export const dynamic = "force-dynamic"
@@ -7,7 +6,7 @@ export const dynamic = "force-dynamic"
 export default async function PortailAgencePage() {
   const [{ clients }, candidates] = await Promise.all([
     getPortalAgenceData(),
-    getCandidates(),
+    getCandidatesForPortal(),
   ])
   return <PortailAgenceClient clients={clients} candidates={candidates} />
 }
