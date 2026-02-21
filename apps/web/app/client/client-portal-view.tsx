@@ -10,6 +10,7 @@ type Candidate = {
   skills: string[]
   city: string | null
   experience: number | null
+  availability: string
 }
 
 type PipelineCandidate = {
@@ -39,6 +40,11 @@ type Client = {
   missions: Mission[]
 }
 
+type PipelineCandidateWithMission = PipelineCandidate & {
+  missionTitle: string
+  missionTarget: number | null
+}
+
 export function ClientPortalView({ client, token }: { client: Client; token: string }) {
   const [isPending, startTransition] = useTransition()
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null)
@@ -46,6 +52,7 @@ export function ClientPortalView({ client, token }: { client: Client; token: str
   const [localComments, setLocalComments] = useState<Record<string, string>>({})
   const [openComment, setOpenComment] = useState<string | null>(null)
   const [commentDraft, setCommentDraft] = useState("")
+  const [openSynthese, setOpenSynthese] = useState<PipelineCandidateWithMission | null>(null)
 
   function showToast(msg: string, type: "success" | "error" = "success") {
     setToast({ msg, type })
@@ -341,6 +348,23 @@ export function ClientPortalView({ client, token }: { client: Client; token: str
                       </div>
                     )}
 
+                    {/* Bouton Voir la synthèse */}
+                    {vis !== "ANONYMOUS" && (
+                      <div style={{ marginTop: 12 }}>
+                        <button
+                          onClick={() => setOpenSynthese(pc)}
+                          style={{
+                            background: "none", border: "1.5px solid #E8EBF0",
+                            borderRadius: 8, padding: "7px 14px",
+                            fontSize: 12, fontWeight: 600, color: "#6C5CE7",
+                            cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6,
+                          }}
+                        >
+                          📄 Voir la synthèse
+                        </button>
+                      </div>
+                    )}
+
                     {/* Bulle commentaire */}
                     <div style={{ marginTop: 14 }}>
                       {!isCommentOpen ? (
@@ -409,6 +433,143 @@ export function ClientPortalView({ client, token }: { client: Client; token: str
           </p>
         </div>
       </div>
+
+      {/* Modal Synthèse CV anonymisé */}
+      {openSynthese && (() => {
+        const pc = openSynthese
+        const c = pc.candidate
+        const availLabel =
+          c.availability === "AVAILABLE" ? "✅ Disponible immédiatement"
+          : c.availability === "BUSY" ? "⏳ En mission"
+          : "❌ Non disponible"
+
+        return (
+          <div
+            style={{
+              position: "fixed", inset: 0, background: "rgba(26,29,35,0.5)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              zIndex: 1000, padding: 16,
+            }}
+            onClick={() => setOpenSynthese(null)}
+          >
+            <div
+              style={{
+                background: "#fff", borderRadius: 20,
+                width: "min(540px, 100%)", maxHeight: "88vh", overflowY: "auto",
+                boxShadow: "0 24px 64px rgba(0,0,0,0.18)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div style={{
+                padding: "22px 28px 18px",
+                borderBottom: "1px solid #F0F2F8",
+                display: "flex", justifyContent: "space-between", alignItems: "center",
+              }}>
+                <div>
+                  <div style={{ fontSize: 17, fontWeight: 700, color: "#1A1D23" }}>
+                    Synthèse du profil
+                  </div>
+                  <div style={{ fontSize: 12, color: "#8892A4", marginTop: 3 }}>
+                    Coordonnées masquées — transmises par l'agence après accord
+                  </div>
+                </div>
+                <button
+                  onClick={() => setOpenSynthese(null)}
+                  style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "#B0B7C8" }}
+                >×</button>
+              </div>
+
+              {/* Body */}
+              <div style={{ padding: "24px 28px", display: "flex", flexDirection: "column", gap: 20 }}>
+
+                {/* Disponibilité + Expérience */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <div style={{
+                    background: "#F4F6FB", borderRadius: 12, padding: "14px 16px",
+                  }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "#8892A4", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 }}>Disponibilité</div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: "#1A1D23" }}>{availLabel}</div>
+                  </div>
+                  <div style={{
+                    background: "#F4F6FB", borderRadius: 12, padding: "14px 16px",
+                  }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "#8892A4", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 }}>Expérience</div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: "#1A1D23" }}>
+                      {c.experience !== null ? `${c.experience} an${c.experience > 1 ? "s" : ""}` : "Non renseigné"}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Localisation */}
+                {c.city && (
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.8px", color: "#8892A4", marginBottom: 10 }}>
+                      Localisation
+                    </div>
+                    <div style={{ fontSize: 14, color: "#1A1D23", display: "flex", alignItems: "center", gap: 6 }}>
+                      📍 {c.city}
+                    </div>
+                  </div>
+                )}
+
+                {/* Compétences / CACES / Permis / Diplômes */}
+                {c.skills.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.8px", color: "#8892A4", marginBottom: 10 }}>
+                      Compétences &amp; qualifications
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      {c.skills.map((s) => {
+                        const isCaces = /caces/i.test(s)
+                        const isPermis = /permis/i.test(s)
+                        const isDiplome = /bts|bac|master|licence|cap|bep|titre|certif|diplôme|formation/i.test(s)
+                        const bg = isCaces ? "#FFF8E1" : isPermis ? "#E8F8F0" : isDiplome ? "#EBF8FF" : "#F4F6FB"
+                        const color = isCaces ? "#D69E2E" : isPermis ? "#276749" : isDiplome ? "#2B6CB0" : "#4A5568"
+                        return (
+                          <span key={s} style={{
+                            padding: "6px 12px", borderRadius: 20, fontSize: 12, fontWeight: 600,
+                            background: bg, color,
+                          }}>{s}</span>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Mission concernée */}
+                <div style={{
+                  background: "#F0EEFF", borderRadius: 10, padding: "12px 16px",
+                  display: "flex", alignItems: "center", gap: 8,
+                }}>
+                  <span style={{ fontSize: 14 }}>📋</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "#6C5CE7" }}>{pc.missionTitle}</span>
+                </div>
+
+                {/* Notice anonymisation */}
+                <div style={{
+                  background: "#FFFBEB", border: "1px solid #F6E05E",
+                  borderRadius: 10, padding: "12px 16px",
+                  fontSize: 12, color: "#744210", lineHeight: 1.5,
+                }}>
+                  🔒 <strong>Profil anonymisé</strong> — Le nom, les coordonnées et l'adresse du candidat sont masqués. Confirmez votre intérêt pour que l'agence vous transmette ses informations complètes.
+                </div>
+
+                <button
+                  onClick={() => setOpenSynthese(null)}
+                  style={{
+                    background: "#6C5CE7", border: "none", borderRadius: 10,
+                    padding: "12px", color: "#fff", fontSize: 14, fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  Fermer
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Toast */}
       {toast && (
