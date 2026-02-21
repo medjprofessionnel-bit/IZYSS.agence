@@ -4,8 +4,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ─── AGENCE ───────────────────────────────────────────────────────────────────
@@ -92,18 +93,25 @@ model ScoringPreset {
 
 // ─── CLIENTS ──────────────────────────────────────────────────────────────────
 model Client {
-  id          String    @id @default(cuid())
-  name        String
-  contact     String?
-  email       String?
-  phone       String?
-  address     String?
-  portalToken String?   @unique // Token unique pour le portail client
-  agencyId    String
-  agency      Agency    @relation(fields: [agencyId], references: [id])
-  missions    Mission[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id                String    @id @default(cuid())
+  name              String
+  contact           String?
+  email             String?
+  phone             String?
+  address           String?
+  siret             String?
+  city              String?
+  postalCode        String?
+  sector            String?
+  status            String    @default("ACTIF") // "ACTIF" | "INACTIF"
+  paymentConditions String?
+  notes             String?
+  portalToken       String?   @unique // Token unique pour le portail client
+  agencyId          String
+  agency            Agency    @relation(fields: [agencyId], references: [id])
+  missions          Mission[]
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 }
 
 // ─── CANDIDATS ────────────────────────────────────────────────────────────────
